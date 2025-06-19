@@ -187,7 +187,7 @@ extern NSBundle *uYouPlusBundle();
 
     YTSettingsSectionItem *developers = [%c(YTSettingsSectionItem)
         itemWithTitle:LOC(@"SUPPORT_THE_DEVELOPERS")
-        titleDescription:LOC(@"MiRO92, PoomSmart, level3tjg, BandarHL, julioverne & Galactic-dev")
+        titleDescription:LOC(@"Kuro47, MiRO92, PoomSmart, level3tjg, BandarHL, julioverne & Galactic-dev")
         accessibilityIdentifier:nil
         detailTextBlock:^NSString *() {
             return nil;
