@@ -77,7 +77,7 @@ CODESIGN_IPA = 0
 FINALPACKAGE = 1
 
 UYOU_PATH = Tweaks/uYou
-UYOU_DEB = $(UYOU_PATH)/com.miro.uyou-unofficial_$(UYOU_VERSION) (Unofficial)_iphoneos-arm.deb
+UYOU_DEB = $(UYOU_PATH)/com.miro.uyou-unofficial_3.0.5 (Unofficial)_iphoneos-arm.deb
 UYOU_DYLIB = $(UYOU_PATH)/Library/MobileSubstrate/DynamicLibraries/uYou.dylib
 UYOU_BUNDLE = $(UYOU_PATH)/Library/Application\ Support/uYouBundle.bundle
 
@@ -109,36 +109,31 @@ ifneq ($(JAILBROKEN),1)
 
 before-all::
 	@if [[ ! -f "$(UYOU_DEB)" ]]; then \
-		rm -rf "$(UYOU_PATH)"/*; \
-		mkdir -p "$(UYOU_PATH)"; \
-		$(PRINT_FORMAT_BLUE) "Downloading uYou"; \
-		curl -fL "https://www.dropbox.com/scl/fi/01vvu5lm8nkkicrznku9v/com.miro.uyou-unofficial_$(UYOU_VERSION)_(Unofficial)_iphoneos-arm.deb?rlkey=efgz7po8kqqvha8doplk1s3ky&dl=1" \
-		-o "$(UYOU_DEB)"; \
+		$(PRINT_FORMAT_ERROR) "uYou .deb not found: $(UYOU_DEB)"; \
+		echo "Available uYou files:"; \
+		find "$(UYOU_PATH)" -maxdepth 1 -type f -print; \
+		exit 1; \
 	fi; \
-	echo "Downloaded file:"; \
-	ls -lah "$(UYOU_PATH)"; \
-	if [[ ! -f "$(UYOU_DEB)" ]]; then \
-		$(PRINT_FORMAT_ERROR) "uYou .deb not found"; exit 1; \
-	fi; \
-	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
-		mkdir -p "$(UYOU_PATH)/extract"; \
-		ar x "$(UYOU_DEB)" --output "$(UYOU_PATH)/extract"; \
-		if [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
-			tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
-		elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
-			tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
-		elif [[ -f "$(UYOU_PATH)/extract/data.tar.gz" ]]; then \
-			tar -xzf "$(UYOU_PATH)/extract/data.tar.gz" -C "$(UYOU_PATH)"; \
-		else \
-			$(PRINT_FORMAT_ERROR) "data archive not found inside uYou .deb"; \
-			ls -lah "$(UYOU_PATH)/extract"; \
-			exit 1; \
-		fi; \
+	$(PRINT_FORMAT_BLUE) "Using local uYou .deb"; \
+	echo "File: $(UYOU_DEB)"; \
+	mkdir -p "$(UYOU_PATH)/extract"; \
+	ar x "$(UYOU_DEB)" --output "$(UYOU_PATH)/extract"; \
+	if [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
+		tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
+	elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
+		tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
+	elif [[ -f "$(UYOU_PATH)/extract/data.tar.gz" ]]; then \
+		tar -xzf "$(UYOU_PATH)/extract/data.tar.gz" -C "$(UYOU_PATH)"; \
+	else \
+		$(PRINT_FORMAT_ERROR) "No supported data.tar archive found"; \
+		ls -lah "$(UYOU_PATH)/extract"; \
 		rm -rf "$(UYOU_PATH)/extract"; \
-		if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
-			$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
-			exit 1; \
-		fi; \
+		exit 1; \
+	fi; \
+	rm -rf "$(UYOU_PATH)/extract"; \
+	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
+		$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
+		exit 1; \
 	fi; \
 	perl -pi -e 's/3\.0\.4/3.0.5/g' "$(UYOU_DYLIB)"; \
 	python3 Scripts/rebrand_uyou.py "$(UYOU_DYLIB)"; \
