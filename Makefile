@@ -115,16 +115,14 @@ before-all::
 	echo "File: $(UYOU_DEB)"; \
 	rm -rf "$(UYOU_PATH)/extract"; \
 	mkdir -p "$(UYOU_PATH)/extract"; \
-	cd "$(UYOU_PATH)/extract" && ar -x "../$$(basename "$(UYOU_DEB)")"; \
+	cd "$(UYOU_PATH)/extract"; \
+	bsdtar -xf "../$$(basename "$(UYOU_DEB)")"; \
 	if [[ -f "data.tar.lzma" ]]; then \
-		$(PRINT_FORMAT_BLUE) "Found data.tar.lzma"; \
-		tar --lzma -xf "data.tar.lzma" -C ".."; \
+		bsdtar --lzma -xf "data.tar.lzma" -C ".."; \
 	elif [[ -f "data.tar.xz" ]]; then \
-		$(PRINT_FORMAT_BLUE) "Found data.tar.xz"; \
-		tar -xf "data.tar.xz" -C ".."; \
+		bsdtar -xf "data.tar.xz" -C ".."; \
 	elif [[ -f "data.tar.gz" ]]; then \
-		$(PRINT_FORMAT_BLUE) "Found data.tar.gz"; \
-		tar -xzf "data.tar.gz" -C ".."; \
+		bsdtar -xzf "data.tar.gz" -C ".."; \
 	else \
 		$(PRINT_FORMAT_ERROR) "No supported data.tar archive found"; \
 		ls -lah; \
@@ -134,8 +132,6 @@ before-all::
 	rm -rf "$(UYOU_PATH)/extract"; \
 	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
 		$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
-		echo "Expected dylib: $(UYOU_DYLIB)"; \
-		echo "Expected bundle: $(UYOU_BUNDLE)"; \
 		exit 1; \
 	fi; \
 	perl -pi -e 's/3\.0\.4/3.0.5/g' "$(UYOU_DYLIB)"; \
