@@ -83,12 +83,15 @@ include $(THEOS)/makefiles/common.mk
 
 ifneq ($(JAILBROKEN),1)
 SUBPROJECTS += Tweaks/Alderis Tweaks/DontEatMyContent Tweaks/FLEXing/libflex Tweaks/Return-YouTube-Dislikes Tweaks/YTABConfig Tweaks/YouGroupSettings Tweaks/YTIcons Tweaks/YouLoop Tweaks/YouPiP Tweaks/YouQuality Tweaks/YouSlider Tweaks/YouSpeed Tweaks/YouTimeStamp Tweaks/YTVideoOverlay Tweaks/YTweaks
+
 ifeq ($(SPONSORBLOCK_ENABLED),1)
 SUBPROJECTS += Tweaks/iSponsorBlock
 endif
+
 ifeq ($(YTUHD_ENABLED),1)
 SUBPROJECTS += Tweaks/YTUHD
 endif
+
 include $(THEOS_MAKE_PATH)/aggregate.mk
 endif
 
@@ -109,16 +112,14 @@ fi;
 $(PRINT_FORMAT_BLUE) "Using local uYou .deb"; 
 rm -rf "$(UYOU_PATH)/extract"; 
 mkdir -p "$(UYOU_PATH)/extract"; 
-cd "$(UYOU_PATH)/extract"; 
-ar -x "../\((basename "$(UYOU_DEB)")"; \
-	DATA=\)(find . -maxdepth 1 -type f -name 'data.tar.*' | head -n 1); 
-if [[ -z "\(DATA" ]]; then \
-		$(PRINT_FORMAT_ERROR) "data.tar archive not found"; \
-		ls -la; \
-		exit 1; \
-	fi; \
-	tar -xf "\)DATA" -C ".."; 
-cd ../..; 
+bsdtar -xf "$(UYOU_DEB)" -C "$(UYOU_PATH)/extract"; 
+DATA=\((find "$(UYOU_PATH)/extract" -type f -name 'data.tar.*' | head -n 1); \
+	if [[ -z "\)DATA" ]]; then 
+$(PRINT_FORMAT_ERROR) "data.tar archive not found"; 
+ls -la "$(UYOU_PATH)/extract"; 
+exit 1; 
+fi; 
+tar -xf "$$DATA" -C "$(UYOU_PATH)"; 
 rm -rf "$(UYOU_PATH)/extract"; 
 if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then 
 $(PRINT_FORMAT_ERROR) "Failed to extract uYou"; 
