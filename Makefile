@@ -115,67 +115,27 @@ before-all::
 	echo "File: $(UYOU_DEB)"; \
 	rm -rf "$(UYOU_PATH)/extract"; \
 	mkdir -p "$(UYOU_PATH)/extract"; \
-	python3 - "$(UYOU_DEB)" "$(UYOU_PATH)/extract" <<'PY' \
-import sys, os, struct, gzip, lzma, tarfile
-
-deb = sys.argv[1]
-out = sys.argv[2]
-
-with open(deb, "rb") as f:
-    magic = f.read(8)
-
-if magic != b"!<arch>\n":
-    raise SystemExit("Invalid .deb: not an ar archive")
-
-with open(deb, "rb") as f:
-    f.seek(8)
-
-    while True:
-        header = f.read(60)
-
-        if not header:
-            break
-
-        if len(header) != 60 or header[58:60] != b"`\n":
-            raise SystemExit("Invalid ar member header")
-
-        name = header[:16].decode("utf-8", "replace").strip()
-        size = int(header[48:58].decode().strip())
-
-        data = f.read(size)
-
-        if size % 2:
-            f.read(1)
-
-        name = name.rstrip("/")
-
-        if name in ("debian-binary", "control.tar.gz", "control.tar.xz",
-                    "control.tar.lzma", "data.tar.gz", "data.tar.xz",
-                    "data.tar.lzma", "data.tar.zst"):
-            path = os.path.join(out, name)
-
-            with open(path, "wb") as o:
-                o.write(data)
-
-            print("Extracted:", name)
-
-PY
-	if [[ -f "$(UYOU_PATH)/extract/data.tar.lzma" ]]; then \
-		tar --lzma -xf "$(UYOU_PATH)/extract/data.tar.lzma" -C "$(UYOU_PATH)"; \
-	elif [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
-		tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
-	elif [[ -f "$(UYOU_PATH)/extract/data.tar.gz" ]]; then \
-		tar -xzf "$(UYOU_PATH)/extract/data.tar.gz" -C "$(UYOU_PATH)"; \
-	elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
-		tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
+	cd "$(UYOU_PATH)/extract" && ar -x "../$$(basename "$(UYOU_DEB)")"; \
+	if [[ -f "data.tar.lzma" ]]; then \
+		$(PRINT_FORMAT_BLUE) "Found data.tar.lzma"; \
+		tar --lzma -xf "data.tar.lzma" -C ".."; \
+	elif [[ -f "data.tar.xz" ]]; then \
+		$(PRINT_FORMAT_BLUE) "Found data.tar.xz"; \
+		tar -xf "data.tar.xz" -C ".."; \
+	elif [[ -f "data.tar.gz" ]]; then \
+		$(PRINT_FORMAT_BLUE) "Found data.tar.gz"; \
+		tar -xzf "data.tar.gz" -C ".."; \
 	else \
-		$(PRINT_FORMAT_ERROR) "No data.tar archive found"; \
-		ls -lah "$(UYOU_PATH)/extract"; \
+		$(PRINT_FORMAT_ERROR) "No supported data.tar archive found"; \
+		ls -lah; \
 		exit 1; \
 	fi; \
+	cd ../..; \
 	rm -rf "$(UYOU_PATH)/extract"; \
 	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
 		$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
+		echo "Expected dylib: $(UYOU_DYLIB)"; \
+		echo "Expected bundle: $(UYOU_BUNDLE)"; \
 		exit 1; \
 	fi; \
 	perl -pi -e 's/3\.0\.4/3.0.5/g' "$(UYOU_DYLIB)"; \
