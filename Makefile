@@ -84,7 +84,6 @@ UYOU_BUNDLE = $(UYOU_PATH)/Library/Application\ Support/uYouBundle.bundle
 include $(THEOS)/makefiles/common.mk
 
 ifneq ($(JAILBROKEN),1)
-
 SUBPROJECTS += Tweaks/Alderis Tweaks/DontEatMyContent Tweaks/FLEXing/libflex Tweaks/Return-YouTube-Dislikes Tweaks/YTABConfig Tweaks/YouGroupSettings Tweaks/YTIcons Tweaks/YouLoop Tweaks/YouPiP Tweaks/YouQuality Tweaks/YouSlider Tweaks/YouSpeed Tweaks/YouTimeStamp Tweaks/YTVideoOverlay Tweaks/YTweaks
 
 ifeq ($(SPONSORBLOCK_ENABLED),1)
@@ -103,30 +102,74 @@ include $(THEOS_MAKE_PATH)/tweak.mk
 .PHONY: internal-clean before-all before-package
 
 internal-clean::
-	@rm -rf "$(UYOU_PATH)"/*
+	@rm -rf "$(UYOU_PATH)/Library"
 
 ifneq ($(JAILBROKEN),1)
 
 before-all::
 	@if [[ ! -f "$(UYOU_DEB)" ]]; then \
 		$(PRINT_FORMAT_ERROR) "uYou .deb not found: $(UYOU_DEB)"; \
-		echo "Available uYou files:"; \
-		find "$(UYOU_PATH)" -maxdepth 1 -type f -print; \
 		exit 1; \
 	fi; \
 	$(PRINT_FORMAT_BLUE) "Using local uYou .deb"; \
 	echo "File: $(UYOU_DEB)"; \
 	rm -rf "$(UYOU_PATH)/extract"; \
 	mkdir -p "$(UYOU_PATH)/extract"; \
-	cd "$(UYOU_PATH)/extract" && ar x "../$$(basename "$(UYOU_DEB)")"; \
-	if [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
+	python3 - "$(UYOU_DEB)" "$(UYOU_PATH)/extract" <<'PY' \
+import sys, os, struct, gzip, lzma, tarfile
+
+deb = sys.argv[1]
+out = sys.argv[2]
+
+with open(deb, "rb") as f:
+    magic = f.read(8)
+
+if magic != b"!<arch>\n":
+    raise SystemExit("Invalid .deb: not an ar archive")
+
+with open(deb, "rb") as f:
+    f.seek(8)
+
+    while True:
+        header = f.read(60)
+
+        if not header:
+            break
+
+        if len(header) != 60 or header[58:60] != b"`\n":
+            raise SystemExit("Invalid ar member header")
+
+        name = header[:16].decode("utf-8", "replace").strip()
+        size = int(header[48:58].decode().strip())
+
+        data = f.read(size)
+
+        if size % 2:
+            f.read(1)
+
+        name = name.rstrip("/")
+
+        if name in ("debian-binary", "control.tar.gz", "control.tar.xz",
+                    "control.tar.lzma", "data.tar.gz", "data.tar.xz",
+                    "data.tar.lzma", "data.tar.zst"):
+            path = os.path.join(out, name)
+
+            with open(path, "wb") as o:
+                o.write(data)
+
+            print("Extracted:", name)
+
+PY
+	if [[ -f "$(UYOU_PATH)/extract/data.tar.lzma" ]]; then \
+		tar --lzma -xf "$(UYOU_PATH)/extract/data.tar.lzma" -C "$(UYOU_PATH)"; \
+	elif [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
 		tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
-	elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
-		tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
 	elif [[ -f "$(UYOU_PATH)/extract/data.tar.gz" ]]; then \
 		tar -xzf "$(UYOU_PATH)/extract/data.tar.gz" -C "$(UYOU_PATH)"; \
+	elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
+		tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
 	else \
-		$(PRINT_FORMAT_ERROR) "No supported data.tar archive found"; \
+		$(PRINT_FORMAT_ERROR) "No data.tar archive found"; \
 		ls -lah "$(UYOU_PATH)/extract"; \
 		exit 1; \
 	fi; \
