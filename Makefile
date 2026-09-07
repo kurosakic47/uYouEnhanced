@@ -14,16 +14,18 @@ BUNDLE_ID ?= com.google.ios.youtube
 ifndef YOUTUBE_VERSION
 YOUTUBE_VERSION = 21.14.4
 endif
+
 ifndef UYOU_VERSION
 UYOU_VERSION = 3.0.5
 endif
+
 PACKAGE_NAME = $(TWEAK_NAME)
 PACKAGE_VERSION = $(YOUTUBE_VERSION)-$(UYOU_VERSION)
 
 $(TWEAK_NAME)_FILES := $(wildcard Sources/*.xm) $(wildcard Sources/*.x) $(wildcard Sources/*.m)
 $(TWEAK_NAME)_FRAMEWORKS = UIKit Foundation AVFoundation AVKit Photos Accelerate CoreMotion GameController VideoToolbox Security MediaPlayer
 $(TWEAK_NAME)_LIBRARIES = bz2 c++ iconv z
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-but-set-variable -DTWEAK_VERSION="$(PACKAGE_VERSION)"
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-but-set-variable -DTWEAK_VERSION=\"$(PACKAGE_VERSION)\"
 
 export libcolorpicker_ARCHS = arm64
 export libFLEX_ARCHS = arm64
@@ -77,12 +79,27 @@ FINALPACKAGE = 1
 UYOU_PATH = Tweaks/uYou
 UYOU_DEB = $(UYOU_PATH)/com.miro.uyou-unofficial_3.0.5_iphoneos-arm.deb
 UYOU_DYLIB = $(UYOU_PATH)/Library/MobileSubstrate/DynamicLibraries/uYou.dylib
-UYOU_BUNDLE = $(UYOU_PATH)/Library/Application\ Support/uYouBundle.bundle
+UYOU_BUNDLE = $(UYOU_PATH)/Library/Application Support/uYouBundle.bundle
 
 include $(THEOS)/makefiles/common.mk
 
 ifneq ($(JAILBROKEN),1)
-SUBPROJECTS += Tweaks/Alderis Tweaks/DontEatMyContent Tweaks/FLEXing/libflex Tweaks/Return-YouTube-Dislikes Tweaks/YTABConfig Tweaks/YouGroupSettings Tweaks/YTIcons Tweaks/YouLoop Tweaks/YouPiP Tweaks/YouQuality Tweaks/YouSlider Tweaks/YouSpeed Tweaks/YouTimeStamp Tweaks/YTVideoOverlay Tweaks/YTweaks
+
+SUBPROJECTS += Tweaks/Alderis
+SUBPROJECTS += Tweaks/DontEatMyContent
+SUBPROJECTS += Tweaks/FLEXing/libflex
+SUBPROJECTS += Tweaks/Return-YouTube-Dislikes
+SUBPROJECTS += Tweaks/YTABConfig
+SUBPROJECTS += Tweaks/YouGroupSettings
+SUBPROJECTS += Tweaks/YTIcons
+SUBPROJECTS += Tweaks/YouLoop
+SUBPROJECTS += Tweaks/YouPiP
+SUBPROJECTS += Tweaks/YouQuality
+SUBPROJECTS += Tweaks/YouSlider
+SUBPROJECTS += Tweaks/YouSpeed
+SUBPROJECTS += Tweaks/YouTimeStamp
+SUBPROJECTS += Tweaks/YTVideoOverlay
+SUBPROJECTS += Tweaks/YTweaks
 
 ifeq ($(SPONSORBLOCK_ENABLED),1)
 SUBPROJECTS += Tweaks/iSponsorBlock
@@ -93,6 +110,7 @@ SUBPROJECTS += Tweaks/YTUHD
 endif
 
 include $(THEOS_MAKE_PATH)/aggregate.mk
+
 endif
 
 include $(THEOS_MAKE_PATH)/tweak.mk
@@ -100,39 +118,39 @@ include $(THEOS_MAKE_PATH)/tweak.mk
 .PHONY: internal-clean before-all before-package
 
 internal-clean::
-@rm -rf "$(UYOU_PATH)/Library"
+	@rm -rf "$(UYOU_PATH)/Library"
 
 ifneq ($(JAILBROKEN),1)
 
 before-all::
-@if [[ ! -f "$(UYOU_DEB)" ]]; then 
-$(PRINT_FORMAT_ERROR) "uYou .deb not found: $(UYOU_DEB)"; 
-exit 1; 
-fi; 
-$(PRINT_FORMAT_BLUE) "Using local uYou .deb"; 
-rm -rf "$(UYOU_PATH)/extract"; 
-mkdir -p "$(UYOU_PATH)/extract"; 
-bsdtar -xf "$(UYOU_DEB)" -C "$(UYOU_PATH)/extract"; 
-DATA=\((find "$(UYOU_PATH)/extract" -type f -name 'data.tar.*' | head -n 1); \
-	if [[ -z "\)DATA" ]]; then 
-$(PRINT_FORMAT_ERROR) "data.tar archive not found"; 
-ls -la "$(UYOU_PATH)/extract"; 
-exit 1; 
-fi; 
-tar -xf "$$DATA" -C "$(UYOU_PATH)"; 
-rm -rf "$(UYOU_PATH)/extract"; 
-if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then 
-$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; 
-exit 1; 
-fi; 
-perl -pi -e 's/3.0.4/3.0.5/g' "$(UYOU_DYLIB)"; 
-python3 Scripts/rebrand_uyou.py "$(UYOU_DYLIB)"; 
-$(PRINT_FORMAT_BLUE) "uYou rebranded to 3.0.5 (Unofficial Build)";
+	@if [[ ! -f "$(UYOU_DEB)" ]]; then \
+		$(PRINT_FORMAT_ERROR) "uYou .deb not found: $(UYOU_DEB)"; \
+		exit 1; \
+	fi; \
+	$(PRINT_FORMAT_BLUE) "Using local uYou .deb"; \
+	rm -rf "$(UYOU_PATH)/extract"; \
+	mkdir -p "$(UYOU_PATH)/extract"; \
+	bsdtar -xf "$(UYOU_DEB)" -C "$(UYOU_PATH)/extract"; \
+	DATA=$$(find "$(UYOU_PATH)/extract" -type f -name 'data.tar.*' | head -n 1); \
+	if [[ -z "$$DATA" ]]; then \
+		$(PRINT_FORMAT_ERROR) "data.tar archive not found"; \
+		ls -la "$(UYOU_PATH)/extract"; \
+		exit 1; \
+	fi; \
+	tar -xf "$$DATA" -C "$(UYOU_PATH)"; \
+	rm -rf "$(UYOU_PATH)/extract"; \
+	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
+		$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
+		exit 1; \
+	fi; \
+	perl -pi -e 's/3\.0\.4/3.0.5/g' "$(UYOU_DYLIB)"; \
+	python3 Scripts/rebrand_uyou.py "$(UYOU_DYLIB)"; \
+	$(PRINT_FORMAT_BLUE) "uYou rebranded to 3.0.5 (Unofficial Build)";
 
 else
 
 before-package::
-@mkdir -p "$(THEOS_STAGING_DIR)/Library/Application Support"; 
-cp -r Localizations/uYouPlus.bundle "$(THEOS_STAGING_DIR)/Library/Application Support/"
+	@mkdir -p "$(THEOS_STAGING_DIR)/Library/Application Support"; \
+	cp -r Localizations/uYouPlus.bundle "$(THEOS_STAGING_DIR)/Library/Application Support/"
 
 endif
