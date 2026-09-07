@@ -179,13 +179,13 @@ extern NSBundle *uYouPlusBundle();
 
     YTSettingsSectionItem *developers = [%c(YTSettingsSectionItem)
         itemWithTitle:LOC(@"SUPPORT_THE_DEVELOPERS")
-        titleDescription:LOC(@"MiRO92, PoomSmart, level3tjg, BandarHL, julioverne & Galactic-dev")
+        titleDescription:LOC(@"Kuro47")
         accessibilityIdentifier:nil
         detailTextBlock:^NSString *() {
             return nil;
         }
         selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
-            return [%c(YTUIUtils) openURL:[NSURL URLWithString:@"https://github.com/arichornlover/uYouEnhanced/blob/main/README.md#support-the-developers"]];
+            return [%c(YTUIUtils) openURL:[NSURL URLWithString:@"https://fb.com/Ikuro47"]];
         }
     ];
     [sectionItems addObject:developers];
