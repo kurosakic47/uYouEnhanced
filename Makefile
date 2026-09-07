@@ -116,8 +116,9 @@ before-all::
 	fi; \
 	$(PRINT_FORMAT_BLUE) "Using local uYou .deb"; \
 	echo "File: $(UYOU_DEB)"; \
+	rm -rf "$(UYOU_PATH)/extract"; \
 	mkdir -p "$(UYOU_PATH)/extract"; \
-	ar x "$(UYOU_DEB)" --output "$(UYOU_PATH)/extract"; \
+	cd "$(UYOU_PATH)/extract" && ar x "../$$(basename "$(UYOU_DEB)")"; \
 	if [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
 		tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
 	elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
@@ -127,7 +128,6 @@ before-all::
 	else \
 		$(PRINT_FORMAT_ERROR) "No supported data.tar archive found"; \
 		ls -lah "$(UYOU_PATH)/extract"; \
-		rm -rf "$(UYOU_PATH)/extract"; \
 		exit 1; \
 	fi; \
 	rm -rf "$(UYOU_PATH)/extract"; \
