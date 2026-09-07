@@ -77,13 +77,14 @@ CODESIGN_IPA = 0
 FINALPACKAGE = 1
 
 UYOU_PATH = Tweaks/uYou
-UYOU_DEB = $(UYOU_PATH)/com.miro.uyou-unofficial_$(UYOU_VERSION)_iphoneos-arm.deb
+UYOU_DEB = $(UYOU_PATH)/com.miro.uyou-unofficial_$(UYOU_VERSION) (Unofficial)_iphoneos-arm.deb
 UYOU_DYLIB = $(UYOU_PATH)/Library/MobileSubstrate/DynamicLibraries/uYou.dylib
 UYOU_BUNDLE = $(UYOU_PATH)/Library/Application\ Support/uYouBundle.bundle
 
 include $(THEOS)/makefiles/common.mk
 
 ifneq ($(JAILBROKEN),1)
+
 SUBPROJECTS += Tweaks/Alderis Tweaks/DontEatMyContent Tweaks/FLEXing/libflex Tweaks/Return-YouTube-Dislikes Tweaks/YTABConfig Tweaks/YouGroupSettings Tweaks/YTIcons Tweaks/YouLoop Tweaks/YouPiP Tweaks/YouQuality Tweaks/YouSlider Tweaks/YouSpeed Tweaks/YouTimeStamp Tweaks/YTVideoOverlay Tweaks/YTweaks
 
 ifeq ($(SPONSORBLOCK_ENABLED),1)
@@ -102,25 +103,41 @@ include $(THEOS_MAKE_PATH)/tweak.mk
 .PHONY: internal-clean before-all before-package
 
 internal-clean::
-	@rm -rf $(UYOU_PATH)/*
+	@rm -rf "$(UYOU_PATH)"/*
 
 ifneq ($(JAILBROKEN),1)
 
 before-all::
 	@if [[ ! -f "$(UYOU_DEB)" ]]; then \
 		rm -rf "$(UYOU_PATH)"/*; \
+		mkdir -p "$(UYOU_PATH)"; \
 		$(PRINT_FORMAT_BLUE) "Downloading uYou"; \
-	fi
-
-before-all::
-	@if [[ ! -f "$(UYOU_DEB)" ]]; then \
-		curl -s -L "https://www.dropbox.com/scl/fi/01vvu5lm8nkkicrznku9v/com.miro.uyou-unofficial_$(UYOU_VERSION)_iphoneos-arm.deb?rlkey=efgz7po8kqqvha8doplk1s3ky&dl=1" -o "$(UYOU_DEB)"; \
+		curl -fL "https://www.dropbox.com/scl/fi/01vvu5lm8nkkicrznku9v/com.miro.uyou-unofficial_$(UYOU_VERSION)_(Unofficial)_iphoneos-arm.deb?rlkey=efgz7po8kqqvha8doplk1s3ky&dl=1" \
+		-o "$(UYOU_DEB)"; \
+	fi; \
+	echo "Downloaded file:"; \
+	ls -lah "$(UYOU_PATH)"; \
+	if [[ ! -f "$(UYOU_DEB)" ]]; then \
+		$(PRINT_FORMAT_ERROR) "uYou .deb not found"; exit 1; \
 	fi; \
 	if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
-		tar -xf "$(UYOU_DEB)" -C "$(UYOU_PATH)"; \
-		tar -xf "$(UYOU_PATH)/data.tar"* -C "$(UYOU_PATH)"; \
+		mkdir -p "$(UYOU_PATH)/extract"; \
+		ar x "$(UYOU_DEB)" --output "$(UYOU_PATH)/extract"; \
+		if [[ -f "$(UYOU_PATH)/extract/data.tar.xz" ]]; then \
+			tar -xf "$(UYOU_PATH)/extract/data.tar.xz" -C "$(UYOU_PATH)"; \
+		elif [[ -f "$(UYOU_PATH)/extract/data.tar.zst" ]]; then \
+			tar --use-compress-program=unzstd -xf "$(UYOU_PATH)/extract/data.tar.zst" -C "$(UYOU_PATH)"; \
+		elif [[ -f "$(UYOU_PATH)/extract/data.tar.gz" ]]; then \
+			tar -xzf "$(UYOU_PATH)/extract/data.tar.gz" -C "$(UYOU_PATH)"; \
+		else \
+			$(PRINT_FORMAT_ERROR) "data archive not found inside uYou .deb"; \
+			ls -lah "$(UYOU_PATH)/extract"; \
+			exit 1; \
+		fi; \
+		rm -rf "$(UYOU_PATH)/extract"; \
 		if [[ ! -f "$(UYOU_DYLIB)" || ! -d "$(UYOU_BUNDLE)" ]]; then \
-			$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; exit 1; \
+			$(PRINT_FORMAT_ERROR) "Failed to extract uYou"; \
+			exit 1; \
 		fi; \
 	fi; \
 	perl -pi -e 's/3\.0\.4/3.0.5/g' "$(UYOU_DYLIB)"; \
@@ -130,6 +147,7 @@ before-all::
 else
 
 before-package::
-	@mkdir -p $(THEOS_STAGING_DIR)/Library/Application\ Support; cp -r Localizations/uYouPlus.bundle $(THEOS_STAGING_DIR)/Library/Application\ Support/
+	@mkdir -p "$(THEOS_STAGING_DIR)/Library/Application Support"; \
+	cp -r Localizations/uYouPlus.bundle "$(THEOS_STAGING_DIR)/Library/Application Support/"
 
 endif
