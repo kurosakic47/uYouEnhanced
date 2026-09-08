@@ -139,6 +139,9 @@ jobs:
 
           echo "Broken pipe fixes applied"
 
+        env:
+          THEOS: ${{ github.workspace }}/theos
+
       - name: Install cyan and tbd
         run: |
           pipx install https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -183,19 +186,19 @@ jobs:
 
           echo "=== Checking libvpx header ==="
           test -f vendor/libvpx/vpx/vpx_decoder.h
-          echo "OK: vendor/libvpx/vpx/vpx_decoder.h"
+          echo "OK: libvpx header"
 
           echo "=== Checking dav1d header ==="
           test -f vendor/dav1d/include/dav1d/dav1d.h
-          echo "OK: vendor/dav1d/include/dav1d/dav1d.h"
+          echo "OK: dav1d header"
 
           echo "=== Checking libvpx library ==="
           test -f vendor/libvpx_ios/libvpx.a
-          echo "OK: vendor/libvpx_ios/libvpx.a"
+          echo "OK: libvpx library"
 
           echo "=== Checking dav1d library ==="
           test -f vendor/dav1d_ios/libdav1d.a
-          echo "OK: vendor/dav1d_ios/libdav1d.a"
+          echo "OK: dav1d library"
 
       - name: Fix compiling & Build Package
         id: build_package
@@ -207,73 +210,31 @@ jobs:
           sed -i '' "s/^export TARGET .*/export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0/" Makefile || echo "export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0" >> Makefile
 
           if [ "${{ inputs.ytuhd }}" = "true" ]; then
+            echo "=== Preparing YTUHD compiler flags ==="
 
-            echo "=== Adding YTUHD include paths to main Makefile ==="
+            cat >> Makefile <<'EOF'
 
-            python3 - <<'PY'
-from pathlib import Path
+          # YTUHD compiler include paths
+          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/libvpx
+          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/libvpx_ios
+          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/dav1d/include
+          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/dav1d_ios/install/include
+          export ADDITIONAL_CFLAGS
+          EOF
 
-p = Path("Makefile")
-s = p.read_text()
+            echo "=== YTUHD compiler flags added ==="
+            tail -10 Makefile
 
-flags = (
-    " -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx"
-    " -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx_ios"
-    " -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d/include"
-    " -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d_ios/install/include"
-)
-
-# Remove previously injected YTUHD flags if a rerun/rebuild happens.
-for flag in flags.split(" -I"):
-    if flag:
-        s = s.replace("-I" + flag, "")
-
-# Add the flags directly to ADDITIONAL_CFLAGS.
-marker = "export ADDITIONAL_CFLAGS"
-
-lines = s.splitlines()
-found = False
-
-for i, line in enumerate(lines):
-    if line.strip().startswith(marker):
-        lines[i] = line.rstrip() + flags
-        found = True
-        break
-
-if not found:
-    insert_at = 0
-
-    for i, line in enumerate(lines):
-        if "include $(THEOS)/makefiles/common.mk" in line:
-            insert_at = i
-            break
-
-    lines.insert(
-        insert_at,
-        "export ADDITIONAL_CFLAGS =" + flags
-    )
-
-p.write_text("\n".join(lines) + "\n")
-
-print("YTUHD include paths injected into main Makefile.")
-PY
-
-            echo "=== MAIN Makefile ADDITIONAL_CFLAGS ==="
-            grep "ADDITIONAL_CFLAGS" Makefile || true
-
-            echo "=== Verifying headers ==="
-
+            echo "=== Verifying YTUHD headers ==="
             test -f Tweaks/YTUHD/vendor/libvpx/vpx/vpx_decoder.h
-            echo "OK: libvpx header"
-
             test -f Tweaks/YTUHD/vendor/dav1d/include/dav1d/dav1d.h
-            echo "OK: dav1d header"
-
+            echo "YTUHD headers OK"
           fi
 
-          echo "=== Building package ==="
-
+          echo "=== Cleaning previous Theos build ==="
           make clean || true
+
+          echo "=== Building package ==="
 
           make package \
             THEOS_PACKAGE_SCHEME=rootless \
@@ -350,7 +311,6 @@ PY
           done
 
           APP_BUNDLE_DIR="main/Payload/YouTube.app"
-
           APP_EXTENSIONS_DIR="$APP_BUNDLE_DIR/Extensions"
 
           if [ -d "$APP_EXTENSIONS_DIR" ]; then
@@ -514,7 +474,7 @@ PY
           UYOU_VERSION: ${{ inputs.uyou_version }}
           YOUTUBE_VERSION: ${{ steps.prepare_youtube.outputs.youtube_version }}
         with:
-          tag_name: v${{ env.YOUTUBE_VERSION }}-${{ env.UYOU_VERSION }}-(${{ github.run_number }})
-          name: v${{ env.YOUTUBE_VERSION }}-${{ env.UYOU_VERSION }}-(${{ github.run_number }})
+          tag_name: v${{ env.YOUTUBE_VERSION }}-${{ inputs.uyou_version }}-(${{ github.run_number }})
+          name: v${{ env.YOUTUBE_VERSION }}-${{ inputs.uyou_version }}-(${{ github.run_number }})
           files: main/packages/*.ipa
           draft: true
