@@ -235,10 +235,48 @@ jobs:
         if: ${{ inputs.ytuhd }}
         working-directory: main
         run: |
-          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/libvpx#$(CURDIR)/Tweaks/YTUHD/vendor/libvpx#g' Tweaks/YTUHD/Makefile
-          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/dav1d#$(CURDIR)/Tweaks/YTUHD/vendor/dav1d#g' Tweaks/YTUHD/Makefile
-          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/build_#$(CURDIR)/Tweaks/YTUHD/vendor/build_#g' Tweaks/YTUHD/Makefile
+          python3 - <<'PY'
+          from pathlib import Path
 
+          p = Path("Tweaks/YTUHD/Makefile")
+          s = p.read_text()
+
+          s = s.replace(
+              'LIBVPX_BUILD = $(THEOS_PROJECT_DIR)/vendor/libvpx_ios',
+              'YTUHD_ROOT = $(THEOS_PROJECT_DIR)/Tweaks/YTUHD\nLIBVPX_BUILD = $(YTUHD_ROOT)/vendor/libvpx_ios'
+          )
+
+          s = s.replace(
+              'DAV1D_BUILD  = $(THEOS_PROJECT_DIR)/vendor/dav1d_ios',
+              'DAV1D_BUILD  = $(YTUHD_ROOT)/vendor/dav1d_ios'
+          )
+
+          s = s.replace(
+              '$(THEOS_PROJECT_DIR)/vendor/libvpx',
+              '$(YTUHD_ROOT)/vendor/libvpx'
+          )
+
+          s = s.replace(
+              '$(THEOS_PROJECT_DIR)/vendor/dav1d/include',
+              '$(YTUHD_ROOT)/vendor/dav1d/include'
+          )
+
+          s = s.replace(
+              '$(THEOS_PROJECT_DIR)/vendor/build_libvpx.sh',
+              '$(YTUHD_ROOT)/vendor/build_libvpx.sh'
+          )
+
+          s = s.replace(
+              '$(THEOS_PROJECT_DIR)/vendor/build_dav1d.sh',
+              '$(YTUHD_ROOT)/vendor/build_dav1d.sh'
+          )
+
+          p.write_text(s)
+          PY
+
+          echo "=== Fixed YTUHD paths ==="
+          grep -A5 'YTUHD)_CFLAGS' Tweaks/YTUHD/Makefile
+          
       - name: Fix compiling & Build Package
         id: build_package
         run: |
