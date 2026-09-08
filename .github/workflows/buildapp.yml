@@ -487,4 +487,3 @@ jobs:
           name: v${{ env.YOUTUBE_VERSION }}-${{ inputs.uyou_version }}-(${{ github.run_number }})
           files: main/packages/*.ipa
           draft: true
-```
