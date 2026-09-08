@@ -206,28 +206,16 @@ jobs:
 
           cd main/Tweaks/YTUHD
 
-          echo "=== Original YTUHD Makefile ==="
-          cat Makefile
+          cat >> Makefile <<'EOF'
 
-          echo "=== Injecting YTUHD header paths directly into YTUHD target ==="
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/vendor/libvpx
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/vendor/libvpx_ios
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/vendor/dav1d/include
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/vendor/dav1d_ios/install/include
+          EOF
 
-          sed -i '' '/include \$\(THEOS_MAKE_PATH\)\/tweak.mk/i\
-          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx\
-          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx_ios\
-          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d/include\
-          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d_ios/install/include\
-          ' Makefile
-
-          echo "=== Patched YTUHD Makefile ==="
-          cat Makefile
-
-          echo "=== Checking headers ==="
           test -f vendor/libvpx/vpx/vpx_decoder.h
           test -f vendor/dav1d/include/dav1d/dav1d.h
-
-          echo "=== Checking exact include resolution paths ==="
-          test -f "$(pwd)/vendor/libvpx/vpx/vpx_decoder.h"
-          test -f "$(pwd)/vendor/dav1d/include/dav1d/dav1d.h"
 
           echo "YTUHD Makefile patched successfully."
 
