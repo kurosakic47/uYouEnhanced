@@ -241,15 +241,13 @@ jobs:
           p = Path("Tweaks/YTUHD/Makefile")
           s = p.read_text()
 
-          s = s.replace(
-              '-I$(THEOS_PROJECT_DIR)/vendor/libvpx',
-              '-I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx'
-          )
+          replacements = {
+              '$(THEOS_PROJECT_DIR)/vendor/libvpx': '$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx',
+              '$(THEOS_PROJECT_DIR)/vendor/dav1d': '$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d',
+          }
 
-          s = s.replace(
-              '-I$(THEOS_PROJECT_DIR)/vendor/dav1d/include',
-              '-I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d/include'
-          )
+          for old, new in replacements.items():
+              s = s.replace(old, new)
 
           p.write_text(s)
           PY
