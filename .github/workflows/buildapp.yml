@@ -231,6 +231,14 @@ jobs:
 
           echo "YTUHD Makefile patched successfully."
 
+      - name: Fix YTUHD paths
+        if: ${{ inputs.ytuhd }}
+        working-directory: main
+        run: |
+          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/libvpx#$(CURDIR)/Tweaks/YTUHD/vendor/libvpx#g' Tweaks/YTUHD/Makefile
+          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/dav1d#$(CURDIR)/Tweaks/YTUHD/vendor/dav1d#g' Tweaks/YTUHD/Makefile
+          sed -i '' 's#$(THEOS_PROJECT_DIR)/vendor/build_#$(CURDIR)/Tweaks/YTUHD/vendor/build_#g' Tweaks/YTUHD/Makefile
+
       - name: Fix compiling & Build Package
         id: build_package
         run: |
