@@ -197,8 +197,9 @@ jobs:
             IPA=Payload/YouTube.app \
             FINALPACKAGE=1 \
             YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} \
-            SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }}
-
+            SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }} \
+            YTUHD_CFLAGS="-fobjc-arc -I$(pwd)/Tweaks/YTUHD/vendor/libvpx -I$(pwd)/Tweaks/YTUHD/vendor/libvpx_ios -I$(pwd)/Tweaks/YTUHD/vendor/dav1d/include -I$(pwd)/Tweaks/YTUHD/vendor/dav1d_ios/install/include"
+            
           echo "package=$(ls -t packages | head -n1)" >> $GITHUB_OUTPUT
 
         env:
