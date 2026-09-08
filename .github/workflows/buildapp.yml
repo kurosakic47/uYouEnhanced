@@ -180,8 +180,6 @@ jobs:
 
       - name: Prepare YTUHD Dependencies
         if: ${{ inputs.ytuhd }}
-        env:
-          THEOS: ${{ github.workspace }}/theos
         run: |
           cd main/Tweaks/YTUHD
 
@@ -192,10 +190,10 @@ jobs:
           git submodule status
 
           echo "=== Building libvpx ==="
-          make libvpx
+          ./vendor/build_libvpx.sh
 
           echo "=== Building dav1d ==="
-          make dav1d
+          ./vendor/build_dav1d.sh
 
           echo "=== Checking libvpx header ==="
           test -f vendor/libvpx/vpx/vpx_decoder.h
