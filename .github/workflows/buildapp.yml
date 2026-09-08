@@ -170,6 +170,8 @@ jobs:
           cd main/Tweaks/YTUHD
           git submodule sync --recursive
           git submodule update --init --recursive
+          make libvpx
+          make dav1d
 
           echo "=== YTUHD submodules ==="
           git submodule status
