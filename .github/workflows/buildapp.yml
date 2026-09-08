@@ -194,14 +194,44 @@ jobs:
           sed -i '' "s/^DISPLAY_NAME .*/DISPLAY_NAME = ${{ inputs.app_name }}/" Makefile || echo "DISPLAY_NAME = ${{ inputs.app_name }}" >> Makefile
           sed -i '' "s/^export TARGET .*/export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0/" Makefile || echo "export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0" >> Makefile
 
+          # Fix YTUHD header include paths
+          cd Tweaks/YTUHD
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("Makefile")
+          s = p.read_text()
+
+          start = s.find("$(TWEAK_NAME)_CFLAGS =")
+          end = s.find("\n$(TWEAK_NAME)_LDFLAGS", start)
+
+          if start != -1 and end != -1:
+              new_cflags = """$(TWEAK_NAME)_CFLAGS = -fobjc-arc \\
+                  -I$(THEOS_PROJECT_DIR)/vendor/libvpx \\
+                  -I$(THEOS_PROJECT_DIR)/vendor/libvpx_ios \\
+                  -I$(THEOS_PROJECT_DIR)/vendor/dav1d/include \\
+                  -I$(THEOS_PROJECT_DIR)/vendor/dav1d_ios/install/include
+          """
+              s = s[:start] + new_cflags + s[end:]
+              p.write_text(s)
+              print("YTUHD include paths fixed.")
+          else:
+              print("Could not find YTUHD_CFLAGS block.")
+          PY
+
+          echo "===== YTUHD CFLAGS ====="
+          grep -A6 'TWEAK_NAME)_CFLAGS' Makefile || true
+
+          cd ../..
+
           make package \
             THEOS_PACKAGE_SCHEME=rootless \
             IPA=Payload/YouTube.app \
             FINALPACKAGE=1 \
             YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} \
-            SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }} \
-            YTUHD_CFLAGS="-fobjc-arc -I$(pwd)/Tweaks/YTUHD/vendor/libvpx -I$(pwd)/Tweaks/YTUHD/vendor/libvpx_ios -I$(pwd)/Tweaks/YTUHD/vendor/dav1d/include -I$(pwd)/Tweaks/YTUHD/vendor/dav1d_ios/install/include"
-            
+            SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }}
+
           echo "package=$(ls -t packages | head -n1)" >> $GITHUB_OUTPUT
 
         env:
