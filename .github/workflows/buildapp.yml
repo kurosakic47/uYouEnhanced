@@ -254,8 +254,7 @@ jobs:
           p.write_text(s)
           PY
 
-          echo "=== YTUHD CFLAGS ==="
-          grep -A6 'YTUHD)_CFLAGS' Tweaks/YTUHD/Makefile
+          echo "=== YTUHD Makefile patched ==="
           
       - name: Fix compiling & Build Package
         id: build_package
