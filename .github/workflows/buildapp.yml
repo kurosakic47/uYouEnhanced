@@ -76,6 +76,18 @@ jobs:
           ref: ${{ github.event.inputs.commit_id || github.ref }}
           submodules: recursive
 
+      - name: Verify YTUHD
+        working-directory: main
+        run: |
+          echo "=== YTUHD ==="
+          git submodule status --recursive
+          echo "=== Files ==="
+          ls -la Tweaks/YTUHD
+          ls -la Tweaks/YTUHD/vendor
+          test -f Tweaks/YTUHD/vendor/libvpx/vpx/vpx_decoder.h
+          test -f Tweaks/YTUHD/vendor/dav1d/include/dav1d/dav1d.h
+          echo "YTUHD headers OK"
+
       - name: Install Dependencies
         run: |
           brew install ldid dpkg make wget unzip jq pipx meson ninja
