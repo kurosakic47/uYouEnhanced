@@ -1,3 +1,4 @@
+```yaml
 # Original idea by @ISnackable. Thanks to him for handling the hardest parts!
 # https://github.com/ISnackable/YTCubePlus/blob/main/.github/workflows/Build.yml
 
@@ -138,7 +139,6 @@ jobs:
           done
 
           echo "Broken pipe fixes applied"
-
         env:
           THEOS: ${{ github.workspace }}/theos
 
@@ -200,6 +200,38 @@ jobs:
           test -f vendor/dav1d_ios/libdav1d.a
           echo "OK: dav1d library"
 
+      - name: Fix YTUHD Makefile Header Paths
+        if: ${{ inputs.ytuhd }}
+        run: |
+          set -e
+
+          cd main/Tweaks/YTUHD
+
+          echo "=== Original YTUHD Makefile ==="
+          cat Makefile
+
+          echo "=== Injecting YTUHD header paths directly into YTUHD target ==="
+
+          sed -i '' '/include \$\(THEOS_MAKE_PATH\)\/tweak.mk/i\
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx\
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/libvpx_ios\
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d/include\
+          $(TWEAK_NAME)_CFLAGS += -I$(THEOS_PROJECT_DIR)/Tweaks/YTUHD/vendor/dav1d_ios/install/include\
+          ' Makefile
+
+          echo "=== Patched YTUHD Makefile ==="
+          cat Makefile
+
+          echo "=== Checking headers ==="
+          test -f vendor/libvpx/vpx/vpx_decoder.h
+          test -f vendor/dav1d/include/dav1d/dav1d.h
+
+          echo "=== Checking exact include resolution paths ==="
+          test -f "$(pwd)/vendor/libvpx/vpx/vpx_decoder.h"
+          test -f "$(pwd)/vendor/dav1d/include/dav1d/dav1d.h"
+
+          echo "YTUHD Makefile patched successfully."
+
       - name: Fix compiling & Build Package
         id: build_package
         run: |
@@ -208,28 +240,6 @@ jobs:
           sed -i '' "s/^BUNDLE_ID .*/BUNDLE_ID = ${{ inputs.bundle_id }}/" Makefile || echo "BUNDLE_ID = ${{ inputs.bundle_id }}" >> Makefile
           sed -i '' "s/^DISPLAY_NAME .*/DISPLAY_NAME = ${{ inputs.app_name }}/" Makefile || echo "DISPLAY_NAME = ${{ inputs.app_name }}" >> Makefile
           sed -i '' "s/^export TARGET .*/export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0/" Makefile || echo "export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0" >> Makefile
-
-          if [ "${{ inputs.ytuhd }}" = "true" ]; then
-            echo "=== Preparing YTUHD compiler flags ==="
-
-            cat >> Makefile <<'EOF'
-
-          # YTUHD compiler include paths
-          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/libvpx
-          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/libvpx_ios
-          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/dav1d/include
-          ADDITIONAL_CFLAGS += -ITweaks/YTUHD/vendor/dav1d_ios/install/include
-          export ADDITIONAL_CFLAGS
-          EOF
-
-            echo "=== YTUHD compiler flags added ==="
-            tail -10 Makefile
-
-            echo "=== Verifying YTUHD headers ==="
-            test -f Tweaks/YTUHD/vendor/libvpx/vpx/vpx_decoder.h
-            test -f Tweaks/YTUHD/vendor/dav1d/include/dav1d/dav1d.h
-            echo "YTUHD headers OK"
-          fi
 
           echo "=== Cleaning previous Theos build ==="
           make clean || true
@@ -478,3 +488,4 @@ jobs:
           name: v${{ env.YOUTUBE_VERSION }}-${{ inputs.uyou_version }}-(${{ github.run_number }})
           files: main/packages/*.ipa
           draft: true
+```
