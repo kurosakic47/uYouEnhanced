@@ -129,12 +129,14 @@ jobs:
               echo "Patched: $SCRIPT"
             fi
           done
+
           find $THEOS -name "*.mk" -type f | while read -r MK; do
             if grep -q '| head' "$MK" 2>/dev/null; then
               sed -i '' 's/| head/2>\/dev\/null | head/g' "$MK" 2>/dev/null || true
               echo "Patched: $MK"
             fi
           done
+
           echo "Broken pipe fixes applied"
 
       - name: Install cyan and tbd
@@ -159,25 +161,44 @@ jobs:
           youtube_version=$(defaults read "$(pwd)/Payload/YouTube.app/Info" CFBundleVersion)
           echo "YT_VERSION=$youtube_version" >> $GITHUB_ENV
           echo "youtube_version=${youtube_version}" >> $GITHUB_OUTPUT
-
         env:
           YOUTUBE_URL: ${{ env.URL_YT }}
+
+      - name: Prepare YTUHD Dependencies
+        if: ${{ inputs.ytuhd }}
+        run: |
+          cd main/Tweaks/YTUHD
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+          echo "=== YTUHD submodules ==="
+          git submodule status
+
+          echo "=== Building libvpx ==="
+          make libvpx
+
+          echo "=== Building dav1d ==="
+          make dav1d
+
+          echo "=== Checking headers ==="
+          find . -name "dav1d.h" -o -name "vpx_decoder.h"
 
       - name: Fix compiling & Build Package
         id: build_package
         run: |
           cd main
+
           sed -i '' "s/^BUNDLE_ID .*/BUNDLE_ID = ${{ inputs.bundle_id }}/" Makefile || echo "BUNDLE_ID = ${{ inputs.bundle_id }}" >> Makefile
           sed -i '' "s/^DISPLAY_NAME .*/DISPLAY_NAME = ${{ inputs.app_name }}/" Makefile || echo "DISPLAY_NAME = ${{ inputs.app_name }}" >> Makefile
           sed -i '' "s/^export TARGET .*/export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0/" Makefile || echo "export TARGET = iphone:clang:${{ inputs.sdk_version }}:16.0" >> Makefile
-          if [ "${{ inputs.ytuhd }}" = "true" ]; then
-            cd Tweaks/YTUHD
-            git submodule update --init --recursive
-            make libvpx dav1d
-            cd ../..
-          fi
 
-          make package THEOS_PACKAGE_SCHEME=rootless IPA=Payload/YouTube.app FINALPACKAGE=1 YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }}
+          make package \
+            THEOS_PACKAGE_SCHEME=rootless \
+            IPA=Payload/YouTube.app \
+            FINALPACKAGE=1 \
+            YTUHD_ENABLED=${{ inputs.ytuhd && '1' || '0' }} \
+            SPONSORBLOCK_ENABLED=${{ inputs.sponsorblock && '1' || '0' }}
+
           echo "package=$(ls -t packages | head -n1)" >> $GITHUB_OUTPUT
 
         env:
@@ -199,31 +220,34 @@ jobs:
           PARENT_BUNDLE="${{ inputs.bundle_id }}"
           ORIG_PREFIX="com.google.ios.youtube"
 
-          echo "Normalizing extension CFBundleIdentifier(s) to use parent prefix: ${PARENT_BUNDLE}"
-
           update_plist_id() {
             PLIST_PATH="$1"
+
             if [ ! -f "$PLIST_PATH" ]; then
               return
             fi
-            if /usr/bin/plutil -convert xml1 "$PLIST_PATH" >/dev/null 2>&1; then
-              :
-            fi
+
+            /usr/bin/plutil -convert xml1 "$PLIST_PATH" >/dev/null 2>&1 || true
+
             CURRENT_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$PLIST_PATH" 2>/dev/null || true)
+
             if [ -z "$CURRENT_ID" ]; then
               return
             fi
+
             if [[ "$CURRENT_ID" == "$ORIG_PREFIX"* ]]; then
               SUFFIX="${CURRENT_ID#${ORIG_PREFIX}.}"
+
               if [ "$SUFFIX" = "$CURRENT_ID" ]; then
                 SUFFIX="Extension"
               fi
+
               NEW_ID="${PARENT_BUNDLE}.${SUFFIX}"
+
               echo "Updating $PLIST_PATH: $CURRENT_ID -> $NEW_ID"
+
               /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $NEW_ID" "$PLIST_PATH" || \
                 /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string $NEW_ID" "$PLIST_PATH" || true
-            else
-              echo "Skipping $PLIST_PATH (does not start with $ORIG_PREFIX): $CURRENT_ID"
             fi
           }
 
@@ -231,10 +255,11 @@ jobs:
             if [ -d "$appex" ]; then
               PLIST="$appex/Info.plist"
               update_plist_id "$PLIST"
-              find "$appex" -type f -name "*.plist" -o -name "*.entitlements" | while read -r f; do
+
+              find "$appex" -type f \( -name "*.plist" -o -name "*.entitlements" \) | while read -r f; do
                 /usr/bin/plutil -convert xml1 "$f" >/dev/null 2>&1 || true
+
                 if grep -q "$ORIG_PREFIX" "$f" >/dev/null 2>&1; then
-                  echo "Replacing occurrences in $f"
                   perl -0777 -pe "s/\Q${ORIG_PREFIX}\E/${PARENT_BUNDLE}/g" -i "$f" || true
                 fi
               done
@@ -244,24 +269,24 @@ jobs:
           APP_BUNDLE_DIR="main/Payload/YouTube.app"
 
           APP_EXTENSIONS_DIR="$APP_BUNDLE_DIR/Extensions"
+
           if [ -d "$APP_EXTENSIONS_DIR" ]; then
-            echo "Removing ExtensionKit-style extensions (unresignable):"
-            ls -1 "$APP_EXTENSIONS_DIR" || true
             rm -rf "$APP_EXTENSIONS_DIR"
           fi
 
           find "$APP_BUNDLE_DIR" -depth -type d -name "*AppMigration*" -print0 2>/dev/null \
-            | xargs -0 -I{} sh -c 'echo "Removing {}"; rm -rf "{}"' || true
+            | xargs -0 -I{} sh -c 'rm -rf "{}"' || true
 
           if [ -d "$APP_BUNDLE_DIR" ]; then
             find "$APP_BUNDLE_DIR" -type d -name "*.appex" | while read -r appex; do
               if [ -d "$appex" ]; then
                 PLIST="$appex/Info.plist"
                 update_plist_id "$PLIST"
+
                 find "$appex" -type f \( -name "*.plist" -o -name "*.entitlements" \) | while read -r f; do
                   /usr/bin/plutil -convert xml1 "$f" >/dev/null 2>&1 || true
+
                   if grep -q "$ORIG_PREFIX" "$f" >/dev/null 2>&1; then
-                    echo "Replacing occurrences in $f"
                     perl -0777 -pe "s/\Q${ORIG_PREFIX}\E/${PARENT_BUNDLE}/g" -i "$f" || true
                   fi
                 done
@@ -270,11 +295,12 @@ jobs:
           fi
 
           MAIN_APP_DIR="main/Payload/YouTube.app"
+
           if [ -d "$MAIN_APP_DIR" ]; then
-            find "$MAIN_APP_DIR" -type f -name "*.plist" -o -name "*.entitlements" | while read -r f; do
+            find "$MAIN_APP_DIR" -type f \( -name "*.plist" -o -name "*.entitlements" \) | while read -r f; do
               /usr/bin/plutil -convert xml1 "$f" >/dev/null 2>&1 || true
+
               if grep -q "$ORIG_PREFIX" "$f" >/dev/null 2>&1; then
-                echo "Replacing occurrences in $f"
                 perl -0777 -pe "s/\Q${ORIG_PREFIX}\E/${PARENT_BUNDLE}/g" -i "$f" || true
               fi
             done
@@ -287,10 +313,13 @@ jobs:
         run: |
           IPA_IN="main/packages/${{ steps.build_package.outputs.package }}"
           OUTNAME="uYouEnhanced_${{ env.YT_VERSION }}_v${{ inputs.uyou_version }}.ipa"
+
           tweaks="OpenYouTubeSafariExtension.appex"
+
           for f in main/packages/*.deb; do
             [ -f "$f" ] && tweaks="$tweaks $f"
           done
+
           cyan -i "$IPA_IN" -o "$OUTNAME" -uwef $tweaks -n "${{ inputs.app_name }}" -b ${{ inputs.bundle_id }}
 
       - name: Strip Unresignable Extensions From Final IPA
@@ -299,73 +328,87 @@ jobs:
           set -euo pipefail
 
           OUTNAME="uYouEnhanced_${{ env.YT_VERSION }}_v${{ inputs.uyou_version }}.ipa"
+
           if [ ! -f "$OUTNAME" ]; then
             OUTNAME="$(basename "$(find . -maxdepth 3 -name 'uYouEnhanced_*.ipa' -print -quit)")"
           fi
+
           echo "Final IPA: $OUTNAME"
 
-          echo "--- .appex bundles contained in final IPA ---"
           unzip -Z1 "$OUTNAME" | grep '\.appex/' | sed 's|^\(.*\.appex\)/.*|\1|' | sort -u | tee appex_list.txt || true
 
           BAD="$(grep -v '/PlugIns/' appex_list.txt || true)"
+
           if [ -n "$BAD" ]; then
-            echo "Removing unresignable extensions:"
-            printf '%s\n' "$BAD"
             printf '%s\n' "$BAD" | while IFS= read -r d; do
               zip -q -d "$OUTNAME" "${d}/*" || true
             done
-          else
-            echo "All extensions are under PlugIns/ - OK for SideStore."
           fi
 
           mkdir -p main/packages
           cp -f "$OUTNAME" "main/packages/$OUTNAME"
+
           find main/packages -maxdepth 1 -name "*.ipa" ! -name "$OUTNAME" -delete || true
+
           echo "Final SideStore-compatible IPA: main/packages/$OUTNAME"
           echo "final_ipa=$OUTNAME" >> "$GITHUB_OUTPUT"
 
       - name: Register Alternate App Icons
         run: |
           set -euo pipefail
+
           IPA="main/packages/${{ steps.strip_ipa.outputs.final_ipa }}"
-          rm -rf iconwork && mkdir -p iconwork && cd iconwork
+
+          rm -rf iconwork
+          mkdir -p iconwork
+          cd iconwork
+
           unzip -q "../$IPA" "Payload/YouTube.app/Info.plist"
+
           PLIST="Payload/YouTube.app/Info.plist"
           ICON_SRC="../main/Localizations/uYouPlus.bundle/AppIcons"
           PB=/usr/libexec/PlistBuddy
-          # Create intermediate dicts FIRST (PlistBuddy cannot nest-create).
+
           for ROOT in CFBundleIcons "CFBundleIcons~ipad"; do
             $PB -c "Add :$ROOT dict" "$PLIST" 2>/dev/null || true
             $PB -c "Add :$ROOT:CFBundleAlternateIcons dict" "$PLIST" 2>/dev/null || true
           done
+
           for f in "$ICON_SRC"/*.png; do
             NAME="$(basename "$f" .png)"
+
             cp -f "$f" "Payload/YouTube.app/$NAME.png"
+
             for ROOT in CFBundleIcons "CFBundleIcons~ipad"; do
               $PB -c "Add :$ROOT:CFBundleAlternateIcons:$NAME dict" "$PLIST" 2>/dev/null || true
               $PB -c "Add :$ROOT:CFBundleAlternateIcons:$NAME:CFBundleIconFiles array" "$PLIST" 2>/dev/null || true
               $PB -c "Add :$ROOT:CFBundleAlternateIcons:$NAME:CFBundleIconFiles:0 string $NAME" "$PLIST" 2>/dev/null || true
               $PB -c "Add :$ROOT:CFBundleAlternateIcons:$NAME:CFBundleIconName string $NAME" "$PLIST" 2>/dev/null || true
             done
+
             echo "Registered alternate icon: $NAME"
           done
+
           $PB -c "Print :CFBundleIcons:CFBundleAlternateIcons" "$PLIST" | head -20
+
           zip -q "../$IPA" "$PLIST" Payload/YouTube.app/*.png
-          cd .. && rm -rf iconwork
-          echo "Alternate icons registered into $(basename "$IPA")"
+
+          cd ..
+          rm -rf iconwork
 
       - name: Rebrand IPA Filename (3.0.4 -> 3.0.5)
         run: |
           set -euo pipefail
+
           cd main/packages
+
           OLD="${{ steps.strip_ipa.outputs.final_ipa }}"
           NEW="${OLD//3.0.4/3.0.5}"
+
           if [ "$OLD" != "$NEW" ] && [ -f "$OLD" ]; then
             mv "$OLD" "$NEW"
-            echo "Renamed: $OLD -> $NEW"
-          else
-            echo "No 3.0.4 in filename or file missing: $OLD"
           fi
+
           echo "RENAMED_IPA=$NEW" >> "$GITHUB_ENV"
 
       - name: Upload Artifact
